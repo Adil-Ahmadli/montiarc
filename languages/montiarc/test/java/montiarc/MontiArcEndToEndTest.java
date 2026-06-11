@@ -66,6 +66,7 @@ import static montiarc.util.MCError.DUPLICATE_VAR_IN_SCOPE;
 import static montiarc.util.MCError.FOR_EACH_EXPR_NOT_ITERABLE;
 import static montiarc.util.MCError.FOR_EACH_TYPE_MISMATCH;
 import static montiarc.util.MCError.MISSING_COMPONENT;
+import static montiarc.util.MCError.SWITCH_CASE_INCOMPATIBLE;
 import static montiarc.util.ModesError.MODE_AUTOMATON_CONTAINS_STATE;
 import static montiarc.util.ModesError.MODE_CONTAINS_PORT_DEFINITION;
 import static montiarc.util.MontiArcError.IMPORTED_SYMBOL_MISSING;
@@ -952,7 +953,7 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
     return Stream.of(
       arg("ConstraintSmtConvertibleTest",
         mpk(PKG_VARI, "ConstraintSmtConvertible.arc"),
-        fn(WARNING, PKG_VARI, "ConstraintSmtConvertible.arc", 8, 14, 8, 29, EXPRESSION_NOT_SMT_CONVERTIBLE, "obj.isPresent()")
+        fn(WARNING, PKG_VARI, "ConstraintSmtConvertible.arc", 8, 14, 8, 29, EXPRESSION_NOT_SMT_CONVERTIBLE, "obj.isPresent()", "method calls are not supported in this context")
       ),
       arg("FieldReferenceInStaticContextVariabilityTest",
         mpk(PKG_VARI, "FieldReferenceInStaticContext.arc", "ParameterizedSuperComponent.arc"),
@@ -1107,6 +1108,31 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
       arg("MaxOneInitTest3",
         mpk(PKG_COMP, "MaxOneInit3.arc"),
         fn(ERROR, PKG_COMP, "MaxOneInit3.arc", 12, 3, 12, 11, MULTIPLE_INIT)
+      ),
+      arg("SwitchCaseIncompatibleTest1",
+        mpk(PKG_STMT, "SwitchCaseIncompatible1.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible1.arc", 10, 14, 10, 15, SWITCH_CASE_INCOMPATIBLE, "int", "boolean")
+      ),
+      arg("SwitchCaseIncompatibleTest2",
+        mpk(PKG_STMT, "SwitchCaseIncompatible2.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible2.arc", 14, 14, 14, 15, SWITCH_CASE_INCOMPATIBLE, "int", "OnOff")
+      ),
+      arg("SwitchCaseIncompatibleTest3",
+        mpk(PKG_STMT, "SwitchCaseIncompatible3.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible3.arc", 14, 14, 14, 18, SWITCH_CASE_INCOMPATIBLE, "long", "boolean")
+      ),
+      arg("SwitchCaseIncompatibleTest4",
+        mpk(PKG_STMT, "SwitchCaseIncompatible4.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible4.arc", 15, 14, 15, 18, SWITCH_CASE_INCOMPATIBLE, "double", "java.lang.Long"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible4.arc", 19, 14, 19, 18, SWITCH_CASE_INCOMPATIBLE, "double", "long")
+      ),
+      arg("SwitchCaseIncompatibleStringTest5",
+        mpk(PKG_STMT, "SwitchCaseIncompatible5.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible5.arc", 14, 14, 14, 17, SWITCH_CASE_INCOMPATIBLE, "int", "java.lang.String")
+      ),
+      arg("SwitchCaseIncompatibleStringTest6",
+        mpk(PKG_STMT, "SwitchCaseIncompatible6.arc"),
+        fn(ERROR, PKG_STMT, "SwitchCaseIncompatible6.arc", 14, 14, 14, 19, SWITCH_CASE_INCOMPATIBLE, "R\"hello\"", "int")
       )
     );
   }
