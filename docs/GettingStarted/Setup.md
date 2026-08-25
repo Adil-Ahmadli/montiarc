@@ -16,7 +16,7 @@ Next, download the [MontiArc-7.9.0.jar](https://github.com/MontiCore/montiarc/re
 You can then run the tool with:
 
 ```bash
-java -jar MontiArc-7.9.0.jar
+java -jar MontiArc-7.10.0.jar
 ```
 
 #### Install the CLI (BETA)

@@ -3,6 +3,7 @@ package montiarc;
 
 import arcbasis._ast.ASTConnector;
 import arcbasis._ast.ASTPortAccess;
+import de.monticore.io.paths.MCPath;
 import de.monticore.symbols.compsymbols._symboltable.ComponentTypeSymbol;
 import de.monticore.symbols.compsymbols._symboltable.PortSymbol;
 import com.google.common.base.Preconditions;
@@ -13,6 +14,7 @@ import montiarc._ast.ASTMACompilationUnit;
 import montiarc._symboltable.IMontiArcArtifactScope;
 import montiarc._symboltable.MontiArcArtifactScope;
 import montiarc.util.Error;
+import montiarc.util.MCError;
 import montiarc.util.MontiArcError;
 import org.apache.commons.cli.CommandLine;
 import org.codehaus.commons.nullanalysis.NotNull;
@@ -20,6 +22,7 @@ import org.codehaus.commons.nullanalysis.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -51,11 +54,11 @@ public class MontiArcToolTest extends MontiArcTestBase {
     MontiArcTool tool = new MontiArcTool();
 
     // When && Then
-    Assertions.assertThrows(NullPointerException.class, () -> tool.run((String[]) null));
+    Assertions.assertThrows(NullPointerException.class, () -> tool.run(null));
   }
 
   /**
-   * Method under test {@link MontiArcTool#run(CommandLine)}
+   * Method under test {@link MontiArcTool#doRun(CommandLine)}
    */
   @Test
   public void runWithNullCLShouldThrow() {
@@ -63,7 +66,7 @@ public class MontiArcToolTest extends MontiArcTestBase {
     MontiArcTool tool = new MontiArcTool();
 
     // When && Then
-    Assertions.assertThrows(NullPointerException.class, () -> tool.run((CommandLine) null));
+    Assertions.assertThrows(NullPointerException.class, () -> tool.doRun(null));
   }
 
   /**
@@ -89,6 +92,9 @@ public class MontiArcToolTest extends MontiArcTestBase {
   public void initGlobalScopeShouldSetSymbolPath() {
     // Given
     MontiArcTool tool = new MontiArcTool();
+    MontiArcMill.globalScope().getSymbolPath().close();
+    MontiArcMill.globalScope().setSymbolPath(new MCPath());
+    // create copy to see that nothing gets removed
 
     String path = "test/resources/CLI/industryModels/industry";
     String[] args = new String[]{path};
@@ -153,7 +159,7 @@ public class MontiArcToolTest extends MontiArcTestBase {
   }
 
   /**
-   * Method under test {@link MontiArcTool#run(CommandLine)}
+   * Method under test {@link MontiArcTool#doRun(CommandLine)}
    */
   @ParameterizedTest
   @MethodSource("runTasksExceptionProvider")
@@ -165,7 +171,7 @@ public class MontiArcToolTest extends MontiArcTestBase {
     MontiArcTool tool = new MontiArcTool();
 
     // When && Then
-    Assertions.assertThrows(expected, () -> tool.run(cli));
+    Assertions.assertThrows(expected, () -> tool.doRun(cli));
   }
 
   protected static Stream<Arguments> runTasksExceptionProvider() {
@@ -534,9 +540,9 @@ public class MontiArcToolTest extends MontiArcTestBase {
     tool.runSymbolTablePhase2(astB);
 
     // Then
-    Assertions.assertTrue(astB.getEnclosingScope().getSubScopes().get(0)
+    Assertions.assertTrue(astB.getEnclosingScope().getSubScopes().getFirst()
       .resolveSubcomponentLocally("a").isPresent());
-    Assertions.assertNotNull(astB.getEnclosingScope().getSubScopes().get(0)
+    Assertions.assertNotNull(astB.getEnclosingScope().getSubScopes().getFirst()
       .resolveSubcomponentLocally("a").get().getType());
   }
 
@@ -569,7 +575,7 @@ public class MontiArcToolTest extends MontiArcTestBase {
     PortSymbol bInPort = bCompType.getPort("inPortB").orElseThrow();
     SubcomponentSymbol aInstance = bCompType.getSubcomponents("a").orElseThrow();
 
-    ASTConnector connector = astB.getArcComponentType().getConnectors().get(0);
+    ASTConnector connector = astB.getArcComponentType().getConnectors().getFirst();
     ASTPortAccess bAccess = connector.getSource();
     ASTPortAccess aAccess = connector.getTarget(0);
 
@@ -977,5 +983,34 @@ public class MontiArcToolTest extends MontiArcTestBase {
       Arguments.of((Object) new String[]{"-i", PATH + "/pkgAndSubpathMatch/path/sub1/Comp1.arc"}),
       Arguments.of((Object) new String[]{"-i", PATH + "/pkgAndSubpathMatch/path/sub2/Comp1.arc"})
     );
+  }
+
+  @Test
+  public void expectedErrorForLibraryImport(@TempDir Path tempDir) {
+    // Given
+    Path lib1Model = Path.of(TEST_RESOURCE, "endtoend", "library", "library1");
+    Path lib2Model = Path.of(TEST_RESOURCE, "endtoend", "library", "library2");
+    Path mainModel = Path.of(TEST_RESOURCE, "endtoend", "library", "ImportFromTwoLibraries.arc");
+
+    Path symbols1 = tempDir.resolve("symbols1");
+    Path symbols2 = tempDir.resolve("symbols2");
+
+    MontiArcTool tool = new MontiArcTool();
+
+    // When
+    tool.run(new String[]{"-i", lib1Model.toString(), "-s", symbols1.toString()});
+    Assertions.assertTrue(Log.getFindings().isEmpty(), Log.getFindings().toString());
+
+    tool.run(new String[]{"-i", lib2Model.toString(), "-s", symbols2.toString()});
+    Assertions.assertTrue(Log.getFindings().isEmpty(), Log.getFindings().toString());
+
+    tool.run(new String[]{
+      "-i", mainModel.toString(),
+      "-path", symbols1.toString(), symbols2.toString()
+    });
+
+    // Then
+    assertThat(getLoggedErrorCodes()).as(Log.getFindings().toString())
+      .containsExactlyInAnyOrder(getErrorCodes(MCError.AMBIGUOUS_MCPATH_ENTRIES, MCError.MISSING_COMPONENT, MontiArcError.IMPORTED_SYMBOL_MISSING));
   }
 }

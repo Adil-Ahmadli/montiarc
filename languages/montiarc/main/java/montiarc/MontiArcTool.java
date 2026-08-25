@@ -14,32 +14,32 @@ import montiarc._ast.ASTMACompilationUnit;
 import montiarc._cocos.MontiArcCoCos;
 import montiarc._symboltable.IMontiArcArtifactScope;
 import montiarc.check.MontiArcTypeCheck;
-import montiarc.logging.MontiArcLog;
 import montiarc.report.IncCheckUtil;
 import montiarc.report.UpToDateResults;
 import montiarc.report.VersionFileDeserializer;
 import montiarc.trafo.MontiArcTrafos;
 import montiarc.util.MontiArcError;
+import montiarc.util.SymbolPathLoader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.help.HelpFormatter;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.commons.nullanalysis.NotNull;
 import org.codehaus.commons.nullanalysis.Nullable;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,7 +55,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
@@ -82,8 +81,7 @@ public class MontiArcTool extends MontiArcToolTOP {
 
   @Override
   public void init() {
-    MontiArcLog.init();
-    MontiArcMill.init();
+    super.init();
     MontiArcTypeCheck.init();
     SymTypeRelations.init();
     MCCollectionSymTypeRelations.init();
@@ -130,21 +128,17 @@ public class MontiArcTool extends MontiArcToolTOP {
           return;
         }
 
-        // if --d or --t: enable verbose logging
-        if (cl.hasOption("d")) {
-          MontiArcLog.initDEBUG();
-        } else if (cl.hasOption("t")) {
-          MontiArcLog.initTRACE();
-        }
+        setupLog(cl);
 
-        run(cl);
+        doRun(cl);
       }
     } catch (ParseException e) {
       Log.error(String.format(MontiArcError.TOOL_PARSE_IOEXCEPTION.toString(), e.getMessage()));
     }
   }
 
-  protected void run(@NotNull CommandLine cl) {
+  @Override
+  protected void doRun(@NotNull CommandLine cl) {
     Preconditions.checkNotNull(cl);
     Preconditions.checkArgument(!cl.hasOption("h"));
     Preconditions.checkArgument(!cl.hasOption("v"));
@@ -164,24 +158,24 @@ public class MontiArcTool extends MontiArcToolTOP {
 
     boolean novar = cl.hasOption("novar");
 
-    this.run(i, p, pp, s, r, c2mc, novar);
+    this.doRun(i, p, pp, s, r, c2mc, novar);
   }
 
-  protected void run(@NotNull String[] i,
-                     @NotNull String[] p,
-                     @Nullable String pp,
-                     @Nullable String s,
-                     @Nullable String r,
-                     boolean c2mc,
-                     boolean novar) {
+  protected void doRun(@NotNull String[] i,
+                       @NotNull String[] p,
+                       @Nullable String pp,
+                       @Nullable String s,
+                       @Nullable String r,
+                       boolean c2mc,
+                       boolean novar) {
     Preconditions.checkNotNull(i);
     Preconditions.checkNotNull(p);
     Preconditions.checkArgument(i.length > 0);
 
     MontiArcMill.globalScope().clear();
     MontiArcMill.globalScope().init();
-    this.initBuildInSymbols(c2mc);
     this.initGlobalScope(p);
+    this.initBuiltInSymbols(c2mc);
     this.compile(i, pp, s, r, c2mc, novar);
   }
 
@@ -266,27 +260,29 @@ public class MontiArcTool extends MontiArcToolTOP {
   }
 
   protected void runCreate(String name, CommandLine cl) {
-    String templateName = "montiarc-templates-main/";
+    String templateName;
     if (cl.hasOption("t")) {
-      templateName += cl.getOptionValue("t").toLowerCase();
+      templateName = cl.getOptionValue("t").toLowerCase();
     } else {
-      templateName += "empty";
+      templateName = "empty";
     }
     // download and unzip
     try {
-      Path zip = Files.createTempFile("MontiArcTemplateProject", ".zip");
-      String gitTag = this.versionSupplier.get().contains("SNAPSHOT") ? "heads/main" : ("tags/" + this.versionSupplier.get().substring(0, 5));
+      Path zip = Files.createTempFile("MontiArcTemplate-" + templateName, ".zip");
+      String gitTag = this.versionSupplier.get().contains("SNAPSHOT") ? "snapshot" : this.versionSupplier.get();
       Log.info(() -> "Downloading template...", "MontiArcTool");
-      FileUtils.copyURLToFile(new URI("https://github.com/MontiCore/montiarc-templates/archive/refs/" + gitTag + ".zip").toURL(), zip.toFile());
+      try {
+        FileUtils.copyURLToFile(new URI("https://github.com/MontiCore/montiarc/releases/download/" + gitTag + "/" + templateName + ".zip").toURL(), zip.toFile());
+      } catch (FileNotFoundException e) {
+        Log.error(MontiArcError.TOOL_CREATE_TEMPLATE_NOT_EXIST.format(cl.getOptionValue("t")), e);
+        return;
+      }
       Log.info(() -> "Creating Project " + name, "MontiArcTool");
-      boolean foundTemplate = false;
       try (java.util.zip.ZipFile zipFile = new ZipFile(zip.toFile())) {
         Enumeration<? extends ZipEntry> entries = zipFile.entries();
         while (entries.hasMoreElements()) {
           ZipEntry entry = entries.nextElement();
-          if (!entry.getName().toLowerCase().startsWith(templateName)) continue;
-          if (!foundTemplate) foundTemplate = true;
-          File entryDestination = new File(name, entry.getName().substring(templateName.length()));
+          File entryDestination = new File(name, entry.getName());
           if (entry.isDirectory()) {
             entryDestination.mkdirs();
           } else {
@@ -298,7 +294,6 @@ public class MontiArcTool extends MontiArcToolTOP {
           }
         }
       }
-      if (!foundTemplate) Log.error(MontiArcError.TOOL_CREATE_TEMPLATE_NOT_EXIST.format(cl.getOptionValue("t")));
     } catch (IOException | SecurityException e) {
       Log.error(e.getMessage());
     } catch (URISyntaxException e) {
@@ -654,33 +649,29 @@ public class MontiArcTool extends MontiArcToolTOP {
   public void initGlobalScope(@NotNull Collection<Path> entries) {
     Preconditions.checkNotNull(entries);
     Preconditions.checkArgument(!entries.contains(null));
+    MontiArcMill.globalScope().getSymbolPath().close();
     entries.forEach(entry -> MontiArcMill.globalScope().getSymbolPath().addEntry(entry));
   }
 
   public void initializeStreams() {
-    URL streamURL = MontiArcTool.class.getClassLoader().getResource("Stream.symtabdefinitionsym");
-    if (streamURL == null) return;
     try {
-      JarURLConnection urlConnection = (JarURLConnection) streamURL.openConnection();
-      JarFile jar = urlConnection.getJarFile();
-      Path jarPath = Path.of(jar.getName());
-      MontiArcMill.globalScope().getSymbolPath().addEntry(jarPath);
-    } catch (IOException ignored) {}
+      SymbolPathLoader.addResource("Stream.symtabdefinitionsym");
+    } catch (IOException ignore) { }
   }
-
 
   public void initializeClass2MC() {
     MontiArcMill.globalScope().addAdaptedTypeSymbolResolver(new OOClass2MCResolver());
     MontiArcMill.globalScope().addAdaptedOOTypeSymbolResolver(new OOClass2MCResolver());
   }
 
-  protected void initBuildInSymbols(boolean c2mc) {
+  protected void initBuiltInSymbols(boolean c2mc) {
     BasicSymbolsMill.initializePrimitives();
     initializeStreams();
     if (c2mc) {
       this.initializeClass2MC();
-    } else {
-      BasicSymbolsMill.initializeObject();
+    }
+
+    if (MontiArcMill.globalScope().resolveType("java.lang.String").isEmpty()) {
       BasicSymbolsMill.initializeString();
     }
   }
@@ -714,22 +705,12 @@ public class MontiArcTool extends MontiArcToolTOP {
     options.addOption(Option.builder("c2mc")
       .longOpt("class2mc")
       .desc("Enables importing java symbols from the java runtime environment")
-      .build());
+      .get());
 
     options.addOption(Option.builder("novar")
       .longOpt("no-variability-checks")
       .desc("Disable the analysis of variable components for better performance")
-      .build());
-
-    options.addOption(Option.builder("d")
-      .longOpt("debug")
-      .desc("Enables verbose logging with debug-level information")
-      .build());
-
-    options.addOption(Option.builder("t")
-      .longOpt("trace")
-      .desc("Enables verbose logging with trace-level information")
-      .build());
+      .get());
 
     return options;
   }
@@ -742,15 +723,18 @@ public class MontiArcTool extends MontiArcToolTOP {
       .numberOfArgs(1)
       .argName("templateName")
       .desc("The project template that should be used for the new project.")
-      .build());
+      .get());
     return options;
   }
 
   protected void printHelp() {
-    org.apache.commons.cli.HelpFormatter formatter = new org.apache.commons.cli.HelpFormatter();
-    formatter.setWidth(80);
-    formatter.printHelp("MontiArcTool [build]", " The main MontiArc build command.", initOptions(), "", true);
-    formatter.printHelp("MontiArcTool create <name>", " Create a new MontiArc project with the given name in the current folder.", initCreateOptions(), "", true);
+    HelpFormatter formatter = HelpFormatter.builder().setShowSince(false).get();
+    try {
+      formatter.printHelp("MontiArc [build]", " The main MontiArc build command.", initOptions(), "", true);
+      formatter.printHelp("MontiArc create <name>", " Create a new MontiArc project with the given name in the current folder.", initCreateOptions(), "", true);
+    } catch (java.io.IOException e) {
+      throw new RuntimeException(e); // If the help-output could not be written to the help appendable
+    }
   }
 
   /**

@@ -13,6 +13,7 @@ import de.se_rwth.commons.SourcePosition;
 import de.se_rwth.commons.logging.Finding;
 import de.se_rwth.commons.logging.Log;
 import montiarc.util.Error;
+import montiarc.util.MCError;
 import org.codehaus.commons.nullanalysis.NotNull;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -32,6 +33,7 @@ import static montiarc.util.ArcError.CIRCULAR_FIELDS_DEPENDENCY;
 import static montiarc.util.ArcError.CIRCULAR_INHERITANCE;
 import static montiarc.util.ArcError.COMPONENT_LOWER_CASE;
 import static montiarc.util.ArcError.COMPONENT_REFERENCE_CYCLE;
+import static montiarc.util.ArcError.COMP_ARG_TYPE_MISMATCH;
 import static montiarc.util.ArcError.CONNECTOR_TIMING_MISMATCH;
 import static montiarc.util.ArcError.CONNECTOR_TYPE_MISMATCH;
 import static montiarc.util.ArcError.FIELD_INIT_TYPE_MISMATCH;
@@ -69,11 +71,13 @@ import static montiarc.util.MCError.MISSING_COMPONENT;
 import static montiarc.util.MCError.SWITCH_CASE_INCOMPATIBLE;
 import static montiarc.util.ModesError.MODE_AUTOMATON_CONTAINS_STATE;
 import static montiarc.util.ModesError.MODE_CONTAINS_PORT_DEFINITION;
+import static montiarc.util.MontiArcError.BREAK_STATEMENT_TARGETS_NO_LOOP;
 import static montiarc.util.MontiArcError.IMPORTED_SYMBOL_MISSING;
 import static montiarc.util.SCError.CANT_FIND_SOURCE;
 import static montiarc.util.SCError.CANT_FIND_TARGET;
 import static montiarc.util.SCError.DUPLICATE_STATE;
 import static montiarc.util.SCError.MISSING_INITIAL_STATE;
+import static montiarc.util.VariableArcError.CONSTRAINT_NOT_SATISFIED;
 import static montiarc.util.VariableArcError.EXPRESSION_NOT_SMT_CONVERTIBLE;
 import static montiarc.util.VariableArcError.FEATURE_UPPER_CASE;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -109,7 +113,8 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
   @DisableIfDisplayName(contains = {
     "NameClash",
     "SelfReferentialComponentWithCompositionTest",
-    "CircularInheritanceWithCompositionTest3"
+    "CircularInheritanceWithCompositionTest3",
+    "TypeMismatchOfDefaultParameterValueTest2"
   })
   void invalidModelsShouldFailEndToEnd(@NotNull String name,
                                        @NotNull String modelPath,
@@ -158,7 +163,8 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
     "MoreThanOneBehaviorTest",
     "MoreThanOneBehaviorWithVariabilityTest",
     "ForEachExpressionNotIterableTest",
-    "ForEachTypeMismatchTest"
+    "ForEachTypeMismatchTest",
+    "TypeMismatchOfDefaultParameterValueTest2"
   })
   void invalidModelsShouldFailEndToEnd4Variability(@NotNull String name,
                                                    @NotNull String modelPath,
@@ -575,9 +581,22 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
         mpk(PKG_COMP, "SelfReferentialComponent5A.arc"),
         fn(ERROR, PKG_COMP, "SelfReferentialComponent5A.arc", 13, 30, 13, 34, COMPONENT_REFERENCE_CYCLE, "SelfReferentialComponent5A", "SelfReferentialComponent5A -> SelfReferentialComponent5B -> SelfReferentialComponent5A")
       ),
-      arg("TypeMismatchOfDefaultParameterValueTest",
+      arg("TypeMismatchOfConfigurationParameterValue1",
+        mpk(PKG_COMP, "TypeMismatchOfConfigurationParameterValue1.arc"),
+        fn(ERROR, PKG_COMP, "TypeMismatchOfConfigurationParameterValue1.arc", 9, 7, 9, 8, COMP_ARG_TYPE_MISMATCH, "boolean", "int"),
+        fn(ERROR, PKG_COMP, "TypeMismatchOfConfigurationParameterValue1.arc", 7, 1, 10, 2, CONSTRAINT_NOT_SATISFIED)
+      ),
+      arg("TypeMismatchOfConfigurationParameterValue2",
+        mpk(PKG_COMP, "TypeMismatchOfConfigurationParameterValue2.arc"),
+        fn(ERROR, PKG_COMP, "TypeMismatchOfConfigurationParameterValue2.arc", 9, 7, 9, 8, COMP_ARG_TYPE_MISMATCH, "boolean", "int")
+      ),
+      arg("TypeMismatchOfDefaultParameterValueTest1",
         mpk(PKG_COMP, "TypeMismatchOfDefaultParameterValue.arc"),
         fn(ERROR, PKG_COMP, "TypeMismatchOfDefaultParameterValue.arc", 7, 59, 7, 73, PARAM_DEFAULT_TYPE_MISMATCH, "int", "boolean")
+      ),
+      arg("TypeMismatchOfDefaultParameterValueTest2",
+        mpk(PKG_COMP, "TypeMismatchOfDefaultParameterValue2.arc"),
+        fn(ERROR, PKG_COMP, "TypeMismatchOfDefaultParameterValue2.arc", 7, 59, 7, 73, PARAM_DEFAULT_TYPE_MISMATCH, "int", "boolean")
       ),
       arg("AutoconnectInAtomicTest1",
         mpk(PKG_CPOS, "AutoconnectInAtomic1.arc"),
@@ -897,27 +916,22 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
       ),
       arg("NoDuplicateVariableDeclarationsTest1",
         mpk(PKG_STMT, "NoDuplicateVariableDeclarations1.arc"),
-        fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations1.arc", 12, 11, 12, 16, DUPLICATE_VAR_IN_SCOPE, "i"),
         fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations1.arc", 13, 11, 13, 16, DUPLICATE_VAR_IN_SCOPE, "i")
       ),
       arg("NoDuplicateVariableDeclarationsTest2",
         mpk(PKG_STMT, "NoDuplicateVariableDeclarations2.arc"),
-        fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations2.arc", 12, 13, 12, 18, DUPLICATE_VAR_IN_SCOPE, "i"),
         fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations2.arc", 13, 13, 13, 18, DUPLICATE_VAR_IN_SCOPE, "i")
       ),
       arg("NoDuplicateVariableDeclarationsTest3",
         mpk(PKG_STMT, "NoDuplicateVariableDeclarations3.arc"),
-        fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations3.arc", 12, 13, 12, 18, DUPLICATE_VAR_IN_SCOPE, "i"),
         fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations3.arc", 13, 13, 13, 18, DUPLICATE_VAR_IN_SCOPE, "i")
       ),
       arg("NoDuplicateVariableDeclarationsTest4",
         mpk(PKG_STMT, "NoDuplicateVariableDeclarations4.arc"),
-        fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations4.arc", 10, 9, 10, 14, DUPLICATE_VAR_IN_SCOPE, "i"),
         fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations4.arc", 11, 9, 11, 14, DUPLICATE_VAR_IN_SCOPE, "i")
       ),
       arg("NoDuplicateVariableDeclarationsTest5",
         mpk(PKG_STMT, "NoDuplicateVariableDeclarations5.arc"),
-        fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations5.arc", 10, 9, 10, 14, DUPLICATE_VAR_IN_SCOPE, "i"),
         fn(ERROR, PKG_STMT, "NoDuplicateVariableDeclarations5.arc", 11, 9, 11, 14, DUPLICATE_VAR_IN_SCOPE, "i")
       ),
       arg("StateInModeAutomatonTest1",
@@ -1109,6 +1123,14 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
         mpk(PKG_COMP, "MaxOneInit3.arc"),
         fn(ERROR, PKG_COMP, "MaxOneInit3.arc", 12, 3, 12, 11, MULTIPLE_INIT)
       ),
+      arg("BreakStatementTargetsNoLoopTest1",
+        mpk(PKG_STMT, "BreakStatementTargetsNoLoop1.arc"),
+        fn(ERROR, PKG_STMT, "BreakStatementTargetsNoLoop1.arc", 9, 9, 9, 15, BREAK_STATEMENT_TARGETS_NO_LOOP)
+      ),
+      arg("BreakStatementTargetsNoLoopTest2",
+        mpk(PKG_STMT, "BreakStatementTargetsNoLoop2.arc"),
+        fn(ERROR, PKG_STMT, "BreakStatementTargetsNoLoop2.arc", 10, 11, 10, 17, BREAK_STATEMENT_TARGETS_NO_LOOP)
+      ),
       arg("SwitchCaseIncompatibleTest1",
         mpk(PKG_STMT, "SwitchCaseIncompatible1.arc"),
         fn(ERROR, PKG_STMT, "SwitchCaseIncompatible1.arc", 10, 14, 10, 15, SWITCH_CASE_INCOMPATIBLE, "int", "boolean")
@@ -1133,6 +1155,10 @@ public class MontiArcEndToEndTest extends MontiArcTestBase {
       arg("SwitchCaseIncompatibleStringTest6",
         mpk(PKG_STMT, "SwitchCaseIncompatible6.arc"),
         fn(ERROR, PKG_STMT, "SwitchCaseIncompatible6.arc", 14, 14, 14, 19, SWITCH_CASE_INCOMPATIBLE, "R\"hello\"", "int")
+      ),
+      arg("ImportingTheSameComponentFromDifferentLibrariesTest",
+        mpk("library", "library1/pkg/SubLib.arc", "library2/pkg/SubLib.arc", "ImportFromTwoLibraries.arc"),
+        fn(ERROR, "library", "ImportFromTwoLibraries.arc", 7, 3, 7, 9, MCError.AMBIGUOUS_COMPONENT_REFERENCE, "pkg.SubLib", "pkg.SubLib")
       )
     );
   }

@@ -3,8 +3,10 @@ package montiarc;
 
 import de.se_rwth.commons.logging.Log;
 import montiarc._ast.ASTMACompilationUnit;
+import montiarc.report.VersionFileDeserializer;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -45,7 +47,7 @@ class MontiArcToolAPITest extends MontiArcTestBase {
     // Then
     assertThat(options.getOptions().size())
         .as(() -> options.getOptions().toString())
-        .isEqualTo(11);
+        .isEqualTo(10);
   }
 
   @Test
@@ -209,36 +211,19 @@ class MontiArcToolAPITest extends MontiArcTestBase {
   }
 
   @Test
-  void initOptionsShouldCreateDebugOptionAsExpected() {
+  void initOptionsShouldCreateStacktraceOptionAsExpected() {
     // When
-    Option option = new MontiArcTool().initOptions().getOption("d");
+    Option option = new MontiArcTool().initOptions().getOption("stacktrace");
 
     // Then
     assertThat(option).isNotNull();
     assertThat(option.hasLongOpt()).isTrue();
-    assertThat(option.getLongOpt()).isEqualTo("debug");
+    assertThat(option.getLongOpt()).isEqualTo("stacktrace");
     assertThat(option.isRequired()).isFalse();
-    assertThat(option.hasArg()).isFalse();
-    assertThat(option.hasArgs()).isFalse();
-    assertThat(option.hasOptionalArg()).isFalse();
-    assertThat(option.hasArgName()).isFalse();
-    assertThat(option.hasValueSeparator()).isFalse();
-  }
-
-  @Test
-  void initOptionsShouldCreateTraceOptionAsExpected() {
-    // When
-    Option option = new MontiArcTool().initOptions().getOption("t");
-
-    // Then
-    assertThat(option).isNotNull();
-    assertThat(option.hasLongOpt()).isTrue();
-    assertThat(option.getLongOpt()).isEqualTo("trace");
-    assertThat(option.isRequired()).isFalse();
-    assertThat(option.hasArg()).isFalse();
-    assertThat(option.hasArgs()).isFalse();
-    assertThat(option.hasOptionalArg()).isFalse();
-    assertThat(option.hasArgName()).isFalse();
+    assertThat(option.hasArg()).isTrue();
+    assertThat(option.hasArgs()).isTrue();
+    assertThat(option.hasOptionalArg()).isTrue();
+    assertThat(option.hasArgName()).isTrue();
     assertThat(option.hasValueSeparator()).isFalse();
   }
 
@@ -352,7 +337,9 @@ class MontiArcToolAPITest extends MontiArcTestBase {
   }
 
   @Test
-  public void testCreateEmpty(@TempDir Path tempDir) throws IOException {
+  public void testCreateEmpty(@TempDir Path tempDir) {
+    Assumptions.assumeTrue(new VersionFileDeserializer(MontiArcTool.INC_CHECK_VERSION_PATH)
+      .loadVersion().contains("SNAPSHOT"));
     // Given
     Path targetDir = tempDir.resolve("test/montiarc/create/EmptyProject");
 
@@ -366,11 +353,14 @@ class MontiArcToolAPITest extends MontiArcTestBase {
     // Then
     assertThat(targetDir).isDirectory();
     assertThat(targetDir).isNotEmptyDirectory();
-    assertThat(Log.getErrorCount()).as(() -> Log.getFindings().toString()).isEqualTo(0);
+    assertThat(targetDir).isDirectoryContaining("glob:**/build.gradle.kts");
+    assertThat(Log.getFindings()).isEmpty();
   }
 
   @Test
-  public void testCreateEmptyTemplate(@TempDir Path tempDir) throws IOException {
+  public void testCreateEmptyTemplate(@TempDir Path tempDir) {
+    Assumptions.assumeTrue(new VersionFileDeserializer(MontiArcTool.INC_CHECK_VERSION_PATH)
+      .loadVersion().contains("SNAPSHOT"));
     // Given
     Path targetDir = tempDir.resolve("test/montiarc/create/EmptyProject");
 
@@ -384,7 +374,29 @@ class MontiArcToolAPITest extends MontiArcTestBase {
     // Then
     assertThat(targetDir).isDirectory();
     assertThat(targetDir).isNotEmptyDirectory();
-    assertThat(Log.getErrorCount()).as(() -> Log.getFindings().toString()).isEqualTo(0);
+    assertThat(targetDir).isDirectoryContaining("glob:**/build.gradle.kts");
+    assertThat(Log.getFindings()).isEmpty();
+  }
+
+  @Test
+  public void testCreateElevatorTutorialTemplate(@TempDir Path tempDir) {
+    Assumptions.assumeTrue(new VersionFileDeserializer(MontiArcTool.INC_CHECK_VERSION_PATH)
+      .loadVersion().contains("SNAPSHOT"));
+    // Given
+    Path targetDir = tempDir.resolve("test/montiarc/create/ElevatorProject");
+
+    String[] args = new String[] {
+      "create", targetDir.toAbsolutePath().toString(), "-t", "ElevatorTutorial",
+    };
+
+    // When
+    MontiArcTool.main(args);
+
+    // Then
+    assertThat(targetDir).isDirectory();
+    assertThat(targetDir).isNotEmptyDirectory();
+    assertThat(targetDir).isDirectoryContaining("glob:**/build.gradle.kts");
+    assertThat(Log.getFindings()).isEmpty();
   }
 
   @Test

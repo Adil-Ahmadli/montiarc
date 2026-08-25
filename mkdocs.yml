@@ -88,10 +88,12 @@ nav:
       - MontiArc: 'Usage/Gradle/MontiArc.md'
       - CD2Java: 'Usage/Gradle/CD2Pojo.md'
       - SD2Arc: 'Usage/Gradle/SD2Arc.md'
+      - FMU2Arc: 'Usage/Gradle/FMU2Arc.md'
     - CLI:
       - CLI: 'Usage/CLI/index.md'
       - MontiArc: 'Usage/CLI/MontiArc.md'
       - CD2Java: 'Usage/CLI/CD2Pojo.md'
+      - FMU2Arc: 'Usage/CLI/FMU2Arc.md'
     - Errors: 
         - Errors: 'Usage/Errors/index.md'
     - Simulation: 
@@ -101,7 +103,10 @@ nav:
     - Concepts:
       - Concepts: 'Reference/Concepts/index.md'
       - Comments: 'Reference/Concepts/Comments.md'
-      - Expressions: 'Reference/Concepts/Expressions.md'
+      - Expressions: 
+        - Expressions: 'Reference/Concepts/Expressions/index.md'
+        - Sets: 'Reference/Concepts/Expressions/Sets.md'
+        - Streams: 'Reference/Concepts/Expressions/Streams.md'
       - Statements: 'Reference/Concepts/Statements.md'
       - Timing: 'Reference/Concepts/Timing.md'
     - Component:
@@ -127,6 +132,10 @@ nav:
       - Collections: 'Reference/Types/Collections.md'
       - Classes: 'Reference/Types/Classes.md'
       - Java Integration: 'Reference/Types/JavaIntegration.md'
+    - Simulation:
+        - Simulation: 'Reference/Simulation/index.md'
+        - Co-Simulation (FMUs): 'Reference/Simulation/CoSimulation.md'
+        - Oracle: 'Reference/Simulation/Oracle.md'
     - Testing:
       - Testing: 'Reference/Testing/index.md'
       - MaUnit: 'Reference/Testing/MaUnit.md'

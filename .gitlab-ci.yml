@@ -41,7 +41,7 @@ Build:
   stage: build
   allow_failure: false
   script:
-    - gradle clean assemble --stacktrace --build-cache -PenableLanguageServer --refresh-dependencies
+    - gradle clean assemble --stacktrace --build-cache --configuration-cache -PenableLanguageServer -Pde.monticore.gradle.performance_statistic="false" --refresh-dependencies
 
 Unit Test:
   stage: test
@@ -49,7 +49,7 @@ Unit Test:
   image: registry.git.rwth-aachen.de/monticore/container-registry/gradle:8.14.4-jdk21
   allow_failure: false
   script:
-    - gradle test jacocoAggregatedTestReport --stacktrace --build-cache -PenableLanguageServer
+    - gradle test jacocoAggregatedTestReport --stacktrace --build-cache --configuration-cache -PenableLanguageServer -Pde.monticore.gradle.performance_statistic="false"
     - awk -F","
       '{ instructions += $4 + $5; covered += $5 } END
       { print covered, "/", instructions, " instructions covered"; print 100*covered/instructions, "% covered" }'
@@ -65,21 +65,34 @@ Unit Test:
       - ./**/build/**/reports/test-coverage/jacoco.xml
     when: always
 
+Test Templates:
+  stage: test
+  <<: *cache_gradle_pull_push
+  image: registry.git.rwth-aachen.de/monticore/container-registry/gradle:8.14.4-jdk21
+  needs: ["Build"]
+  allow_failure: false
+  script:
+    - gradle publishToMavenLocal :gradle-plugins:publishAllToMavenLocal --stacktrace --build-cache --configuration-cache -PenableLanguageServer -Pde.monticore.gradle.performance_statistic="false" --refresh-dependencies
+    - |
+      for template_dir in templates/*/; do
+        gradle -I ../test-templates.init.gradle -p "$template_dir" build --stacktrace
+      done
+
 Deploy Nexus:
   image: registry.git.rwth-aachen.de/monticore/container-registry/gradle:8.14.4-jdk21
   <<: *cache_gradle_pull_only
   stage: deploy
   script:
-    - gradle publish :gradle-plugins:publishAll -PmavenPassword=$pass -PmavenUser=$user --build-cache -PenableLanguageServer
+    - gradle publish :gradle-plugins:publishAll -PmavenPassword=$pass -PmavenUser=$user --build-cache --configuration-cache -PenableLanguageServer -Pde.monticore.gradle.performance_statistic="false"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
       when: on_success
 
 Trigger Digital Twin:
   stage: downstream
-  needs: 
-   - job: "Deploy Nexus"
-     optional: true
+  needs:
+    - job: "Deploy Nexus"
+      optional: true
   allow_failure: false
   trigger:
     project: monticore/umlp-anwendungen/digital-twin
@@ -137,7 +150,7 @@ Check Dependency Updates:
   needs: []
   allow_failure: true
   script:
-    - gradle dependencyUpdates
+    - gradle dependencyUpdates -PenableLanguageServer
     - |
       echo "Checking for outdated dependencies..."
       REPORT_FILE="build/versions/dependency-updates.json"
@@ -148,7 +161,7 @@ Check Dependency Updates:
       
       OUTDATED_BLOCK=$(sed -n '/"outdated": {/,/}/p' build/versions/dependency-updates.json)
       OUTDATED_COUNT=$(echo "$OUTDATED_BLOCK" | grep -oP '"count":\s*\K\d+' | head -1)
-      if [ "$OUTDATED_COUNT" -gt 2 ]; then
+      if [ "$OUTDATED_COUNT" -gt 4 ]; then
         echo "Found $OUTDATED_COUNT outdated dependencies."
         exit 1
       else

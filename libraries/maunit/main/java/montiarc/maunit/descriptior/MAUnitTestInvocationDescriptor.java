@@ -1,13 +1,14 @@
 /* (c) https://github.com/MontiCore/monticore */
 package montiarc.maunit.descriptior;
 
-import montiarc.lang.Simulation;
 import montiarc.maunit.api.MaUnitTest;
 import montiarc.maunit.api.MaUnitTestContext;
 import montiarc.maunit.engine.MAUnitTestExecutionContext;
+import montiarc.rte.Simulation;
 import montiarc.rte.component.SimComponent;
 import montiarc.rte.oracle.OracleFactory;
 import montiarc.rte.scheduling.CoordinatingScheduler;
+import org.codehaus.commons.nullanalysis.NotNull;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.support.descriptor.AbstractTestDescriptor;
@@ -36,11 +37,13 @@ public class MAUnitTestInvocationDescriptor extends AbstractTestDescriptor imple
 
   // --- TestDescriptor ------------------------------------------------------
 
+  @NotNull
   @Override
   public Type getType() {
     return Type.TEST;
   }
 
+  @NotNull
   @Override
   public String getLegacyReportingName() {
     return super.getLegacyReportingName() + "[" + iteration + "]";
@@ -48,12 +51,13 @@ public class MAUnitTestInvocationDescriptor extends AbstractTestDescriptor imple
 
   // --- Node ----------------------------------------------------------------
 
+  @NotNull
   @Override
   public MAUnitTestExecutionContext execute(MAUnitTestExecutionContext context, DynamicTestExecutor dynamicTestExecutor) throws Exception {
-    CoordinatingScheduler scheduler = new CoordinatingScheduler();
+    OracleFactory oracleFactory = invocationContext.getOracleFactory(iteration);
+    CoordinatingScheduler scheduler = new CoordinatingScheduler(oracleFactory);
     Simulation.nanosecondsPerTick = getSimulatedTickLength();
     Simulation.ticks = 0;
-    OracleFactory oracleFactory = OracleFactory.withDefaultStrategy(OracleFactory.lowestHash());
     SimComponent component = (SimComponent) testClass.getConstructors()[0].newInstance(getArguments(testClass.getConstructors()[0].getParameterCount(), scheduler, oracleFactory));
     boolean caughtException = false;
     try {

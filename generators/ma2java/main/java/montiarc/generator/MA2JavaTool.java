@@ -65,22 +65,22 @@ public class MA2JavaTool extends MontiArcTool {
       .desc("Generates java code to the specified directory")
       .hasArg()
       .argName("dir")
-      .build());
+      .get());
     options.addOption(org.apache.commons.cli.Option.builder("hwc")
       .longOpt("handwritten-code")
       .desc("Sets the artifact path for handwritten code, space separated")
       .hasArgs()
       .argName("paths")
-      .build());
+      .get());
     options.addOption(org.apache.commons.cli.Option.builder("dse")
       .longOpt("dynamic-symbolic-execution")
       .desc("Enables code generation for dynamic-symbolic execution")
-      .build());
+      .get());
     return super.addStandardOptions(options);
   }
 
   @Override
-  protected void run(@NotNull CommandLine cl) {
+  protected void doRun(@NotNull CommandLine cl) {
     Preconditions.checkArgument(!cl.hasOption("h"));
     Preconditions.checkArgument(!cl.hasOption("v"));
     Preconditions.checkArgument(cl.hasOption("i"));
@@ -106,26 +106,26 @@ public class MA2JavaTool extends MontiArcTool {
 
     boolean novar = cl.hasOption("novar");
 
-    this.run(i, p, hwc, o, pp, s, r, c2mc, dse, novar);
+    this.doRun(i, p, hwc, o, pp, s, r, c2mc, dse, novar);
   }
 
-  protected void run(@NotNull String[] i,
-                     @NotNull String[] p,
-                     @NotNull String[] hwc,
-                     @Nullable String o,
-                     @Nullable String pp,
-                     @Nullable String s,
-                     @Nullable String r,
-                     boolean c2mc,
-                     boolean dse,
-                     boolean novar) {
+  protected void doRun(@NotNull String[] i,
+                       @NotNull String[] p,
+                       @NotNull String[] hwc,
+                       @Nullable String o,
+                       @Nullable String pp,
+                       @Nullable String s,
+                       @Nullable String r,
+                       boolean c2mc,
+                       boolean dse,
+                       boolean novar) {
     Preconditions.checkNotNull(i);
     Preconditions.checkNotNull(p);
     Preconditions.checkNotNull(hwc);
     Preconditions.checkArgument(i.length > 0);
 
     this.initGlobalScope(p);
-    this.initBuildInSymbols(c2mc);
+    this.initBuiltInSymbols(c2mc);
     this.compile(i, hwc, o, pp, s, r, c2mc, dse, novar);
   }
 

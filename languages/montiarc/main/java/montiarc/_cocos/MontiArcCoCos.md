@@ -10,16 +10,19 @@
 
 #### Code Ranges
 
-| Language                                | Range             |
-|-----------------------------------------|-------------------|
-| [MontiArc](#montiarc-cocos)             | 0xC1000 - 0xC1099 |
-| [ArcBasis](#arcbasis-cocos)             | 0xC1100 - 0xC1299 |
-| [Automaton](#automaton-cocos)           | 0xC1300 - 0xC1349 |
-| [Modes](#mode-automata)                 | 0xC1350 - 0xC1399 |
-| [VariableArc](#variablearc-cocos)       | 0xC1400 - 0xC1449 |
-| [ComfortableArc](#comfortablearc-cocos) | 0xC1450 - 0xC1499 |
-| [Unit](#maunit-cocos)                   | 0xC1500 - 0xC1549 |
-| [ArcCompute](#arccompute-cocos)         | 0xC1550 - 0xC1599 |
+| Language                                          | Range             |
+|---------------------------------------------------|-------------------|
+| [MontiArc](#montiarc-cocos)                       | 0xC1000 - 0xC1099 |
+| [ArcBasis](#arcbasis-cocos)                       | 0xC1100 - 0xC1299 |
+| [Automaton](#automaton-cocos)                     | 0xC1300 - 0xC1349 |
+| [Modes](#mode-automata)                           | 0xC1350 - 0xC1399 |
+| [VariableArc](#variablearc-cocos)                 | 0xC1400 - 0xC1449 |
+| [ComfortableArc](#comfortablearc-cocos)           | 0xC1450 - 0xC1499 |
+| [Unit](#maunit-cocos)                             | 0xC1500 - 0xC1549 |
+| [ArcCompute](#arccompute-cocos)                   | 0xC1550 - 0xC1599 |
+| [PrePost](#prepost-cocos)                         | 0xC1600 - 0xC1649 |
+| [Assuption Guarantee](#Assuption-Guarantee-CoCos) | 0xC1650 - 0xC1699   |
+
 
 ## ArcBasis CoCos
 
@@ -153,3 +156,17 @@
 | ☑     | ☑           | ForEachIsValid                             | Statements |       |
 | ☑     | ☑           | IfConditionHasBooleanType                  | Statements |       |
 | ☑     | ☑           | SwitchCaseTypesValid                       | Statements |       |
+
+## PrePost CoCos
+
+| in MA | VariantCoCo | CoCo(s)           | Language   | Codes            |
+|-------|-------------|-------------------|------------|------------------|
+| ☑     | ☑           | PrePostIsBoolean  | ArcPrePost | 0xC1600          |
+| ☑     | ☑           | TriggerPortExists | ArcPrePost | 0xC1601, 0xC1602 |
+
+
+## Assumption Guarantee CoCos
+
+| in MA | VariantCoCo | CoCo(s)         | Language | Codes           |
+|-------|-------------|-----------------|----------|-----------------|
+| ☑     | ☑           | AGIsBoolean     | ag       | 0xC1650         |

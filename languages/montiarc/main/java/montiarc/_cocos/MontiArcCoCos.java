@@ -36,6 +36,7 @@ import arcbasis._cocos.NoPortInSuperComponentArgument;
 import arcbasis._cocos.OnlyAssignmentOrCallExpressionStatement;
 import arcbasis._cocos.OnlyOneTiming;
 import arcbasis._cocos.OptionalConfigurationParametersLast;
+import arcbasis._cocos.OracleStereotypeValueExists;
 import arcbasis._cocos.ParameterDefaultValueTypeFits;
 import arcbasis._cocos.ParameterNameCapitalization;
 import arcbasis._cocos.PortHeritageTimingFits;
@@ -54,6 +55,8 @@ import arccompute._cocos.MaxOneInit;
 import arccompute._cocos.NoInitWithoutCompute;
 import arccompute._cocos.NoInputPortsInInitialCompute;
 import arccompute._cocos.NoNonSyncInputPortInCompute;
+import arcprepost._cocos.PrePostIsBoolean;
+import arcprepost._cocos.TriggerPortExists;
 import comfortablearc._cocos.AtomicNoAutoConnect;
 import comfortablearc._cocos.MaxOneAutoConnect;
 import de.monticore.expressions.assignmentexpressions._cocos.AssignmentExpressionsASTAssignmentExpressionCoCo;
@@ -173,6 +176,7 @@ public class MontiArcCoCos {
     checker.addCoCo(new PortHeritageTypeFits());
     checker.addCoCo(new FieldInitTypeFits());
     checker.addCoCo(new ParameterDefaultValueTypeFits());
+    checker.addCoCo((ArcBasisASTArcComponentTypeCoCo) new OracleStereotypeValueExists());
     if (checkVariants) {
       varChecker.get4FullVariant().addCoCo(new NoPortInDefaultParameterValue4Family());
       varChecker.get4FullVariant().addCoCo(new NoPortInFieldDeclaration4Family());
@@ -206,6 +210,7 @@ public class MontiArcCoCos {
       checker.addCoCo(new BehaviorInDecomposed());
     }
     checker.addCoCo(new OnlyAssignmentOrCallExpressionStatement());
+    checker.addCoCo(new BreakStatementTargetsLoop());
 
     // ArcBasis Generics CoCos
     checker.addCoCo(new TypeParameterCapitalization());
@@ -220,9 +225,9 @@ public class MontiArcCoCos {
     checker.addCoCo(new ConstraintSatisfied4Comp());
     checker.addCoCo(new FeatureNameCapitalization());
     checker.addCoCo(new FeatureUsage());
-    checker.addCoCo(new SubcomponentsConstraint());
     checker.addCoCo(new NoPortInConstraint());
     if (checkVariants) {
+      checker.addCoCo(new SubcomponentsConstraint());
       checker.addCoCo(new NoFieldInVarIfCondition());
       checker.addCoCo(new NoPortInVarIfCondition());
       checker.addCoCo(new VarIfIsBoolean());
@@ -327,6 +332,10 @@ public class MontiArcCoCos {
 
     // Block unsupported model elements
     checker.addCoCo(new UnsupportedAutomatonElements.FinalStates());
+
+    // PrePost
+    checker.addCoCo(new PrePostIsBoolean());
+    checker.addCoCo(new TriggerPortExists());
 
     return checkVariants? varChecker : checker;
   }

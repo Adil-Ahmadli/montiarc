@@ -14,10 +14,9 @@ dependencies {
   grammar(project(":languages:comfy"))
   grammar(project(":languages:features"))
   grammar(project(":languages:modes"))
-
-  api(project(":languages:compute"))
-  api(project(":languages:features"))
-  api(project(":languages:modes"))
+  grammar(project(":languages:ag"))
+  grammar(project(":languages:prepost"))
+  grammar(project(":languages:ucd"))
 
   implementation(seLibs.mc.c2mc)
   implementation(libs.guava)
@@ -26,11 +25,7 @@ dependencies {
 
   runtimeOnly(seLibs.mc.stream.symbols)
 
-  testImplementation((project(":languages:basis"))) {
-    capabilities {
-      requireCapability("montiarc.languages:basis-tests")
-    }
-  }
+  testImplementation(testFixtures(project(":languages:basis")))
 
   testImplementation(libs.mockito)
 }

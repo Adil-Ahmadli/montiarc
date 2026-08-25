@@ -3,10 +3,11 @@ package montiarc.rte.deploy;
 
 import com.google.common.base.Preconditions;
 import de.se_rwth.commons.logging.Log;
-import montiarc.lang.Simulation;
+import montiarc.rte.Simulation;
 import montiarc.rte.component.Component;
 import montiarc.rte.component.SimComponent;
 import montiarc.rte.deploy.util.DeSerializer;
+import montiarc.rte.oracle.OracleFactory;
 import montiarc.rte.scheduling.CoordinatingScheduler;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
@@ -106,7 +107,7 @@ public abstract class Deployment<T extends Component> {
   }
 
   protected CoordinatingScheduler buildCoordinatingScheduler() {
-    return new CoordinatingScheduler();
+    return new CoordinatingScheduler(OracleFactory.withDefaultStrategy(OracleFactory.preferFirst()));
   }
 
   protected abstract T buildComponent(CoordinatingScheduler scheduler, Map<String, String> parameters);
@@ -153,7 +154,7 @@ public abstract class Deployment<T extends Component> {
 
   protected void printHelp() {
     try {
-      HelpFormatter.builder().get().printHelp("java " + this.getClass().getSimpleName(), "", buildOptions(), "", true);
+      HelpFormatter.builder().setShowSince(false).get().printHelp("Deployment", "", buildOptions(), "", true);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

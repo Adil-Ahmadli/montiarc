@@ -14,7 +14,7 @@ import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.tasks.Jar
 
-const val GENERATOR_DEPENDENCY_CONFIG_NAME = "maGenerator"
+const val TOOL_CLASSPATH_CONFIG_NAME = "ma2jsimToolClasspath"
 
 const val MA_TOOL_CLASS = "montiarc.generator.MA2JSimTool"
 
@@ -44,7 +44,7 @@ class MA2JSimPlugin : Plugin<Project> {
 
   override fun apply(project: Project){
     this.project = project
-    this.project.pluginManager.apply(MontiarcBasePlugin::class.java)
+    this.project.pluginManager.apply(MontiArcBasePlugin::class.java)
 
     this.project.extensions.extraProperties.set("MATaskType", MontiArcCompile::class.java)
 
@@ -53,10 +53,10 @@ class MA2JSimPlugin : Plugin<Project> {
 
       sourceSetsOf(project).all { sourceSet ->
         // Enabling the declaration of model dependencies and prepare their extraction
-        createCompileMontiarcTask(sourceSet)
+        createCompileMontiArcTask(sourceSet)
         addRuntimeEnvironmentDependencyFor(sourceSet)
-        dependencies.addProvider(sourceSet.montiarcDependencyDeclarationConfigName, provider { MAVEN_MA_BASE_PROJECT_REF })
-        dependencies.addProvider(sourceSet.montiarcDependencyDeclarationConfigName, provider { MAVEN_MAUNIT_PROJECT_REF })
+        dependencies.addProvider(sourceSet.montiarcConfigName, provider { MAVEN_MA_BASE_PROJECT_REF })
+        dependencies.addProvider(sourceSet.montiarcConfigName, provider { MAVEN_MAUNIT_PROJECT_REF })
       }
 
       // Special treatments for the main and test source sets. They only exist, if the java plugin is applied
@@ -80,6 +80,10 @@ class MA2JSimPlugin : Plugin<Project> {
       pluginManager.withPlugin("cd2pojo") {
         pluginManager.apply(CDOut2MAInPlugin::class.java)
       }
+
+      pluginManager.withPlugin("fmu2arc") {
+        pluginManager.apply(FMUOut2MAInPlugin::class.java)
+      }
     }
   }
 
@@ -91,18 +95,20 @@ class MA2JSimPlugin : Plugin<Project> {
 
   private fun addGeneratorDependency() = with (project) {
     // Add a configuration to store the classpath for executing the ma2java generator
-    configurations.create(GENERATOR_DEPENDENCY_CONFIG_NAME) {
+    configurations.create(TOOL_CLASSPATH_CONFIG_NAME) {
       it.isCanBeResolved = true  // Necessary so that gradle can actually find a jar artifact
-      it.isCanBeConsumed = false  // We do not use this configuration for publishing
+      it.isCanBeConsumed = false  // The configuration should not be published, its internal to the compile task impl
+      it.isCanBeDeclared = false // The user should not be able to declare new dependencies in this configuration
+      it.isVisible = false // Should not be visible outside the project
     }
 
-    // Add a dependency on the ma2java jar
-    dependencies.addProvider(GENERATOR_DEPENDENCY_CONFIG_NAME, provider { MAVEN_GENERATOR_PROJECT_REF })
+    // Add a dependency on the ma2jsim jar
+    dependencies.addProvider(TOOL_CLASSPATH_CONFIG_NAME, provider { MAVEN_GENERATOR_PROJECT_REF })
   }
 
   private fun addRuntimeEnvironmentDependencyFor(sourceSet: SourceSet) = with(project) {
     dependencies.addProvider(sourceSet.implementationConfigurationName, provider { MAVEN_RTE_PROJECT_REF })
-    dependencies.addProvider(sourceSet.cd2pojo4MaDeclarationConfigName, provider { MAVEN_RTE_PROJECT_REF })
+    dependencies.addProvider(sourceSet.fmu2arc4montiarcConfigName, provider { MAVEN_RTE_PROJECT_REF })
 
     // If the project is a library and gets consumed, the consumer must transitively consume the runtime environment,
     // too. Therefore, we want to put the dependency on the api configuration. However, the api configuration only
@@ -120,19 +126,24 @@ class MA2JSimPlugin : Plugin<Project> {
    * Moreover, the [destinationDirectory][SourceDirectorySet.getDestinationDirectory] of the
    * task is added to the java sources of the same SourceSet.
    */
-  private fun createCompileMontiarcTask(sourceSet: SourceSet): TaskProvider<MontiArcCompile> = with (project) {
+  private fun createCompileMontiArcTask(sourceSet: SourceSet): TaskProvider<MontiArcCompile> = with (project) {
     val montiarcSrcDirSet = sourceSet.montiarc.get()
-    val taskName = sourceSet.compileMontiarcTaskName
+    val taskName = sourceSet.compileMontiArcTaskName
     val generateTask = tasks.register(taskName, MontiArcCompile::class.java)
 
     generateTask.configure { genTask ->
-      genTask.description = "Generates java code from the Montiarc models in source set ${sourceSet.name}."
+      genTask.description = "Generates java code from the MontiArc models in source set ${sourceSet.name}."
 
-      genTask.modelPath.from(montiarcSrcDirSet.sourceDirectories)
+      genTask.modelpath.from(montiarcSrcDirSet.sourceDirectories)
       genTask.outputDir.set(montiarcSrcDirSet.destinationDirectory)
-      genTask.symbolImportDir.from(
-        configurations.named(sourceSet.montiarcSymbolDependencyConfigurationName),
-        configurations.named(sourceSet.cd2Pojo4MaSymbolDependencyConfigName)
+      genTask.symbolpath.from(
+        configurations.named(sourceSet.montiarcSymbolpathConfigName),
+        configurations.named(sourceSet.cd2pojo4montiarcSymbolpathConfigName),
+
+        // Fmu Symbols
+        configurations.named(sourceSet.fmu2arc4montiarcSymbolpathConfigName),
+        // Fmu dependent Component Symbols
+        configurations.named(sourceSet.fmu2arc4montiarcCompSymbolpathConfigName)
       )
 
       sourceSet.java.srcDir(genTask.javaOutputDir())
@@ -161,10 +172,10 @@ class MA2JSimPlugin : Plugin<Project> {
     val mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
     val testSourceSet = sourceSets.getByName(SourceSet.TEST_SOURCE_SET_NAME)
 
-    val mainCompile = tasks.named(mainSourceSet.compileMontiarcTaskName, MontiArcCompile::class.java)
+    val mainCompile = tasks.named(mainSourceSet.compileMontiArcTaskName, MontiArcCompile::class.java)
     // Puts main's symbols on the symbol path of test
-    tasks.named(testSourceSet.compileMontiarcTaskName, MontiArcCompile::class.java) {
-      it.symbolImportDir.from(mainCompile.get().symbolOutputDir())
+    tasks.named(testSourceSet.compileMontiArcTaskName, MontiArcCompile::class.java) {
+      it.symbolpath.from(mainCompile.get().symbolOutputDir())
     }
   }
 
@@ -180,14 +191,14 @@ class MA2JSimPlugin : Plugin<Project> {
    * Configures the symbols jar task so that it contains the symbols produced by the [MontiArcCompile] task.
    */
   private fun putCompiledSymbolsIntoJarOf(sourceSet: SourceSet) = with (project) {
-    val compileTask = tasks.named(sourceSet.compileMontiarcTaskName, MontiArcCompile::class.java)
+    val compileTask = tasks.named(sourceSet.compileMontiArcTaskName, MontiArcCompile::class.java)
     tasks.named(sourceSet.montiarcSymbolsJarTaskName, Jar::class.java).configure {jar ->
       jar.from(compileTask.get().symbolOutputDir())
     }
   }
 
   /**
-   * Makes the compiled java source set `testFxitures` available in `test` (these source sets must exist, checked by
+   * Makes the compiled java source set `testFixtures` available in `test` (these source sets must exist, checked by
    * whether the [org.gradle.api.plugins.JavaPlugin] and [org.gradle.api.plugins.JavaTestFixturesPlugin] is applied).
    */
   private fun makeTestFixturesModelsAvailableInTests() = with (project) {
@@ -200,8 +211,8 @@ class MA2JSimPlugin : Plugin<Project> {
 
     val compileTestFixturesJava = tasks.named("compileTestFixturesJava", JavaCompile::class.java)
     // Puts test fixtures on the symbol path of test
-    tasks.named(testSourceSet.compileMontiarcTaskName, MontiArcCompile::class.java) {
-      it.symbolImportDir.from(compileTestFixturesJava.get().destinationDirectory)
+    tasks.named(testSourceSet.compileMontiArcTaskName, MontiArcCompile::class.java) {
+      it.symbolpath.from(compileTestFixturesJava.get().destinationDirectory)
     }
   }
 }
